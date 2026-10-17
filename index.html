@@ -400,7 +400,12 @@
                     }
                     recordPomodoro();
                     clearActiveTask();
-                    alert("🍅 恭喜完成！");
+                    
+                    setTimeout(() => {
+                        alert("🍅 恭喜完成！");
+                        timeLeft = document.getElementById('timeSlider').value * 60;
+                        renderTime();
+                    }, 100);
                 }
             }, 1000);
         }
