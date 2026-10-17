@@ -4,10 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Pro番茄鐘 & 數據分析</title>
-    <!-- 引入 Chart.js -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
-        /* 定義 CSS 變數，方便切換深淺色 */
         :root {
             --bg-color: #fdfbf7;
             --primary-color: #ff6b6b;
@@ -60,7 +58,6 @@
             transition: background-color 0.3s;
         }
 
-        /* 深淺色切換按鈕 */
         .theme-toggle {
             position: absolute;
             top: 20px;
@@ -72,7 +69,6 @@
             color: var(--text-dark);
         }
 
-        /* 正在專注的任務提示 */
         .active-task-banner {
             background: var(--primary-color);
             color: white;
@@ -86,7 +82,6 @@
             transition: opacity 0.3s;
         }
 
-        /* 番茄鐘圖形與樣式 */
         .tomato-container {
             display: flex;
             flex-direction: column;
@@ -128,7 +123,6 @@
             font-variant-numeric: tabular-nums;
         }
 
-        /* 控制區與圖表區 */
         .controls { display: flex; gap: 10px; justify-content: center; margin: 15px 0; }
         .chart-container { height: 150px; width: 100%; margin-bottom: 20px; }
         
@@ -146,7 +140,6 @@
         .btn-primary { background-color: var(--primary-color); color: white; }
         .btn:hover { transform: translateY(-2px); box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
 
-        /* 任務清單區塊 */
         .todo-section { border-top: 2px dashed var(--input-border); padding-top: 20px; }
         .input-row, .meta-row { display: flex; gap: 8px; margin-bottom: 10px; }
         
@@ -183,7 +176,6 @@
 <div class="app-container">
     <button class="theme-toggle" onclick="toggleTheme()" id="themeIcon">☀️</button>
     
-    <!-- 番茄鐘區塊 -->
     <div class="tomato-container">
         <div class="active-task-banner" id="activeTaskBanner">目前專注：無綁定任務</div>
         <div class="tomato">
@@ -202,12 +194,10 @@
         </div>
     </div>
 
-    <!-- 數據儀表板 -->
     <div class="chart-container">
         <canvas id="pomodoroChart"></canvas>
     </div>
 
-    <!-- 任務清單區塊 -->
     <div class="todo-section">
         <div class="input-row">
             <input type="text" id="taskInput" class="task-input" placeholder="想完成什麼任務？">
@@ -226,7 +216,6 @@
 </div>
 
 <script>
-    /* ================= 系統與主題初始化 ================= */
     let isDarkMode = localStorage.getItem('tomatoTheme') === 'dark';
     if(isDarkMode) document.body.classList.add('dark-mode');
     document.getElementById('themeIcon').textContent = isDarkMode ? '🌙' : '☀️';
@@ -236,32 +225,33 @@
         document.body.classList.toggle('dark-mode', isDarkMode);
         document.getElementById('themeIcon').textContent = isDarkMode ? '🌙' : '☀️';
         localStorage.setItem('tomatoTheme', isDarkMode ? 'dark' : 'light');
-        updateChart(); // 更新圖表顏色
+        updateChart(); 
     }
 
-    // 請求系統通知權限
     if (Notification.permission !== "granted" && Notification.permission !== "denied") {
         Notification.requestPermission();
     }
 
-    // 產生清脆的電子音效 (Web Audio API)
+    let audioCtx = null;
+
     function playBeep() {
         try {
-            const ctx = new (window.AudioContext || window.webkitAudioContext)();
-            const osc = ctx.createOscillator();
-            const gain = ctx.createGain();
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            }
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
             osc.connect(gain);
-            gain.connect(ctx.destination);
+            gain.connect(audioCtx.destination);
             osc.type = 'sine';
-            osc.frequency.setValueAtTime(880, ctx.currentTime); // A5 音高
-            gain.gain.setValueAtTime(0.1, ctx.currentTime);
+            osc.frequency.setValueAtTime(880, audioCtx.currentTime); // A5 音高
+            gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
             osc.start();
-            gain.gain.exponentialRampToValueAtTime(0.00001, ctx.currentTime + 0.5);
-            osc.stop(ctx.currentTime + 0.5);
+            gain.gain.exponentialRampToValueAtTime(0.00001, audioCtx.currentTime + 0.5);
+            osc.stop(audioCtx.currentTime + 0.5);
         } catch(e) { console.log("音效播放失敗", e); }
     }
 
-    /* ================= 資料管理 (Tasks & Stats) ================= */
     let tasks = JSON.parse(localStorage.getItem('tomatoTasks')) || [];
     let stats = JSON.parse(localStorage.getItem('tomatoStats')) || {};
     let activeTaskId = null;
@@ -290,7 +280,6 @@
         updateChart();
     }
 
-    /* ================= 任務清單邏輯 ================= */
     function addTask() {
         const name = document.getElementById('taskInput').value.trim();
         if (!name) return alert("請輸入任務名稱！");
@@ -364,7 +353,6 @@
         });
     }
 
-    /* ================= 番茄鐘邏輯 ================= */
     let timeLeft = 25 * 60;
     let timerInterval = null;
     let isRunning = false;
@@ -389,6 +377,13 @@
             document.getElementById('startBtn').textContent = "專注中...";
             document.getElementById('timeSlider').disabled = true;
 
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            }
+            if (audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+
             timerInterval = setInterval(() => {
                 if (timeLeft > 0) {
                     timeLeft--;
@@ -399,7 +394,6 @@
                     document.getElementById('startBtn').textContent = "開始專注";
                     document.getElementById('timeSlider').disabled = false;
                     
-                    // 結束時的專業回饋：音效 + 推播 + 紀錄數據
                     playBeep();
                     if (Notification.permission === "granted") {
                         new Notification("🍅 番茄鐘完成！", { body: activeTaskId ? "任務推進了一步，休息一下吧！" : "恭喜完成一次專注！" });
@@ -428,14 +422,12 @@
         clearActiveTask();
     }
 
-    /* ================= 圖表邏輯 (Chart.js) ================= */
     let chartInstance = null;
     function updateChart() {
         const ctx = document.getElementById('pomodoroChart').getContext('2d');
         const labels = [];
         const data = [];
         
-        // 取得近 7 天的日期與數據
         for(let i=6; i>=0; i--) {
             const d = new Date();
             d.setDate(d.getDate() - i);
@@ -470,11 +462,10 @@
         });
     }
 
-    // 初始化
     renderTime();
     renderTasks();
     updateChart();
-    setInterval(renderTasks, 60000); // 每分鐘檢查一次逾期狀態
+    setInterval(renderTasks, 60000);
 </script>
 
 </body>
